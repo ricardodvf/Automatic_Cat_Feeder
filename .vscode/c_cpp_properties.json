@@ -8,7 +8,7 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s/include",
+                "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s",
                 "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s/src",
                 "C:/Users/Ricardo/Documents/Arduino/libraries/ESP_Telnet/src",
                 "C:/Users/Ricardo/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
@@ -159,7 +159,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s/include",
+                    "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s",
                     "c:/Users/Ricardo/Documents/PlatformIO/Projects/220106-060121-nodemcu-32s/src",
                     "C:/Users/Ricardo/Documents/Arduino/libraries/ESP_Telnet/src",
                     "C:/Users/Ricardo/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
