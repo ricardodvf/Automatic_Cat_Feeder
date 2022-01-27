@@ -30,8 +30,8 @@ int servoPin = 18;
 
 bool catFeederStatus = 0; //Variable to indicate if cat feeder is on or off
 
-const char *ssid = "*****";
-const char *password = "******";
+String ssid = "*****";
+String password = "******";
 
 //***************************************************************************************************
 void notifyClients()
@@ -47,7 +47,9 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
     data[len] = 0;
     if (strcmp((char *)data, "toggle") == 0)
     {
-      ledState = !ledState;
+      Serial.println(F("Message Received: "));
+      Serial.println((char *)data);
+
       notifyClients();
     }
   }
@@ -84,26 +86,23 @@ void initWebSocket()
 String processor(const String &var)
 {
   Serial.println(var);
-  if (var == "STATE")
+  if (var == "STATUS")
   {
-    if (digitalRead(3))
-    {
-      catFeederStatus = 1;
-    }
-    else
-    {
-      catFeederStatus = 2;
-    }
-    Serial.print(catFeederStatus);
-    return "OFF";
+    Serial.println(F("STATUSITO"));
+    return "STATUSITO";
   }
-  return String();
+  
+  else if (var == "BUTTON")
+  {
+    Serial.println(F("BUTTONCITO"));
+    return "BUTTONCITO";
+  }
 }
 //***************************************************************************************************
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Booting");
+  Serial.println(F("WELCOME   Booting..."));
   // Initialize the internal SPISS memory on the ESP32
   if (!SPIFFS.begin(true))
   {
@@ -112,17 +111,32 @@ void setup()
   }
 
   //Reads the WIFI Password from the SPISS
+  File file = SPIFFS.open("/System.ini");
+  if (!file)
+  {
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
+  while (file.available())
+  {
+    String systemInfo = file.readStringUntil(char(34));
+    ssid = file.readStringUntil(char(34));
+    systemInfo = file.readStringUntil(char(34));
+    password = file.readStringUntil(char(34));
+  }
+
+  file.close();
   // Establish WiFi connections.
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  Serial.println(ssid);
+  WiFi.begin(ssid.c_str(), password.c_str());
   while (WiFi.waitForConnectResult() != WL_CONNECTED)
   {
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();
   }
-
-  
 
   //Arduino over the are sync code
   ArduinoOTA
@@ -168,9 +182,20 @@ void setup()
   myservo.write(10);
 
   //Start and configue the WebServer
+
   initWebSocket();
+  // Web Server Root URL
+  // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/html", index_html, processor); });
+            { request->send(SPIFFS, "/Index.html", String(), false, processor); });
+  server.serveStatic("/", SPIFFS, "/");
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/Style.css", "text/css"); });
+  server.on("/Scripts.js", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/Scripts.js", "text/js"); });
+  server.on("/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/bootstrap.min.css", "text/css"); });
+
   server.begin();
 
   //Send our messages to the console stating we are ready to rock and roll!
@@ -184,6 +209,7 @@ void setup()
 void loop()
 {
   ArduinoOTA.handle();
+  ws.cleanupClients();
 }
 
 //***************************************************************************************************
