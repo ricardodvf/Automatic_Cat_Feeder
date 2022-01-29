@@ -8,31 +8,40 @@
     <link href="bootstrap.min.css" rel="stylesheet">
 
 </head>
+<!-- Create a main container -->
 <div class="container">
-    <div class="alert alert-dismissible alert-success">
+    <!-- Testing a dismissable alert on top of the page -->
+    <div class="alert alert-dismissible alert-success" id="alert_feederON">
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         <strong>Well done!</strong> Thank you for being responsible and feeding the cats!
     </div>
+
+    <!-- Entering the body of the page, setting theme to dark -->
 
     <body class="bg-dark text-white">
         <br>
         <h1 class="text-center lead display-4 fw-bold lh-1">Cat Feeder Control
         </h1>
         <h3 class="text-center text-muted">To Make Whiskers loose weight!! (Chunky Cat)</h3>
+        <!-- Div for the two buttons -->
         <div class="col-md-12">
+            <!-- Label displaying real time status of cat feeder -->
             <p id="state" class="">Cat Feeder Status: %STATUS%</p>
-            <button id="button_Manual" type="button" class="btn btn-primary btn-block" href="/feederOff">%BUTTON%
+            <!-- Here are the two buttons, these buttons have a listeners assigned in the JavaScript code -->
+            <button id="button_Manual" type="button" class="btn btn-primary btn-block">%BUTTON%
                 </button>
             <p class="text-center"></p>
-            <button type="button" class="btn btn-success" href="/feederAutomatic">Automatic
+            <button id="button_Automatic" type="button" class="btn btn-success">Automatic
                 </button>
         </div>
         <br>
+        <!-- testing a switch for automatic function-->
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
             <label class="form-check-label" for="flexSwitchCheckDefault">Default
                     switch checkbox input</label>
         </div>
+        <!-- Testing a toast show from bootstrap to display messages-->
         <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
                 <strong class="me-auto">Bootstrap</strong>
@@ -47,6 +56,7 @@
         </div>
 </div>
 <script type="text/javascript" src="Scripts.js"></script>
+<script type="text/javascript" src="jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
 </body>
 

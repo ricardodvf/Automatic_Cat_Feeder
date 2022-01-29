@@ -7,20 +7,27 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "SPIFFS.h"
+#include "time.h"
+#include "ESP32Time.h"
 
 //Functions declarations
-
-//#include <WiFi.h> //For the server function
+void notifyClients(String message);
 // Set web server port number to 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
-// Current time
+// Current millis count
 unsigned long currentTime = millis();
-// Previous time
+// Previous millis count
 unsigned long previousTime = 0;
 // Define timeout time in milliseconds (example: 2000ms = 2s)
 const long timeoutTime = 2000;
+// Variable for real time (time.h)
+const char *ntpServer = "time-a-b.nist.gov";
+const long gmtOffset_sec = -6;
+const int daylightOffset_sec = 3600;
+struct tm timeinfo;
+ESP32Time rtc;
 
 Servo myservo; // create servo object to control a servo
 
@@ -29,14 +36,90 @@ int pos = 0; // variable to store the servo position
 int servoPin = 18;
 
 bool catFeederStatus = 0; //Variable to indicate if cat feeder is on or off
+bool autoON = false;
 
 String ssid = "*****";
 String password = "******";
-
 //***************************************************************************************************
-void notifyClients()
+void ToggleAutomaticMode()
 {
-  ws.textAll(String("Something"));
+  if (autoON == false)
+  {
+    autoON = true;
+    notifyClients("AutoON");
+  }
+  else
+  {
+    autoON = false;
+    notifyClients("AutoOFF");
+  }
+}
+//***************************************************************************************************
+void ToggleCatFeeder()
+{
+  if (catFeederStatus == 0)
+  {
+    myservo.write(170);
+    catFeederStatus = 1;
+  }
+  else
+  {
+    myservo.write(10);
+    catFeederStatus = 0;
+  }
+  ws.textAll(String(catFeederStatus));
+  Serial.println(F("Cat Feeder Toggled: "));
+  Serial.println(catFeederStatus);
+}
+//***************************************************************************************************
+void FeedAutomatically()
+{
+  //print message to notify we are starting.
+  Serial.println(F("Starting Scheduled Feeding..."));
+  if (catFeederStatus == 1)
+  {
+    Serial.println(F("Error: Feeder is busy... I see it is open."));
+    return;
+  }
+}
+//***************************************************************************************************
+void LogFeedingTime()
+{
+  File fileFeedingLog = SPIFFS.open("/FeedingLog.ini", "w");
+  if (!fileFeedingLog)
+  {
+    Serial.println("Failed to open feeding log for writing to it");
+    return;
+  }
+  if (fileFeedingLog.println(rtc.getDateTime()))
+  {
+    Serial.println("Feeding date-time was logged");
+  }
+  else
+  {
+    Serial.println("Logging Feeding date-time FAILED");
+  }
+  fileFeedingLog.close();
+}
+//***************************************************************************************************
+String GetLastFeedingTime()
+{
+  File fileFeedingLog = SPIFFS.open("/FeedingLog.ini", "r");
+  if (!fileFeedingLog)
+  {
+    Serial.println("Failed to open feeding log to read it");
+    return "";
+  }
+  String lastFeeding;
+  lastFeeding = fileFeedingLog.readStringUntil(char(13));
+  fileFeedingLog.close();
+  Serial.println(lastFeeding);
+  return lastFeeding;
+}
+//***************************************************************************************************
+void notifyClients(String message)
+{
+  ws.textAll(message);
 }
 //***************************************************************************************************
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
@@ -45,16 +128,21 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
   {
     data[len] = 0;
-    if (strcmp((char *)data, "toggle") == 0)
+    Serial.println(F("Message Received: "));
+    Serial.println((char *)data);
+    if (strcmp((char *)data, "manual_toggle") == 0)
     {
-      Serial.println(F("Message Received: "));
-      Serial.println((char *)data);
-
-      notifyClients();
+      //Toggle feeder position
+      ToggleCatFeeder();
+    }
+    else if (strcmp((char *)data, "auto_toggle") == 0)
+    {
+      ToggleAutomaticMode();
     }
   }
 }
-//***************************************************************************************************
+
+//************************************************************************************************
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
              void *arg, uint8_t *data, size_t len)
@@ -88,15 +176,32 @@ String processor(const String &var)
   Serial.println(var);
   if (var == "STATUS")
   {
-    Serial.println(F("STATUSITO"));
-    return "STATUSITO";
+    if (catFeederStatus == 0)
+      return "OFF";
+    else
+      return "ON";
   }
-  
+
   else if (var == "BUTTON")
   {
-    Serial.println(F("BUTTONCITO"));
-    return "BUTTONCITO";
+    if (catFeederStatus == 0)
+      return "TURN ON";
+    else
+      return "TURN OFF";
   }
+  return "";
+}
+//***************************************************************************************************
+void printLocalTime()
+{
+
+  if (!getLocalTime(&timeinfo))
+  {
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  rtc.setTimeStruct(timeinfo);
+  Serial.println(rtc.getDateTime());
 }
 //***************************************************************************************************
 void setup()
@@ -197,11 +302,14 @@ void setup()
             { request->send(SPIFFS, "/bootstrap.min.css", "text/css"); });
 
   server.begin();
+  // Get the real time from the server
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
   //Send our messages to the console stating we are ready to rock and roll!
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+  printLocalTime();
   Serial.println("HTTP server started");
 }
 
@@ -210,6 +318,12 @@ void loop()
 {
   ArduinoOTA.handle();
   ws.cleanupClients();
+  if (autoON == true)
+  {
+    delay(1000);
+    FeedAutomatically();
+    GetLastFeedingTime();
+  }
 }
 
 //***************************************************************************************************
