@@ -3,9 +3,15 @@
 
 <head>
     <meta name="Cat Feeder" content="width=device-width, initial-scale=1">
-    <title>CAT FEEDER</title>
+    <title>CAT FEEDER CENTRAL</title>
 
+    <link href="Style.css" rel="stylesheet">
     <link href="bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+P+One&display=swap" rel="stylesheet">
+    <link href="SwingingCats.css" rel="stylesheet">
+
 
 </head>
 <!-- Create a main container -->
@@ -16,48 +22,155 @@
         <strong>Well done!</strong> Thank you for being responsible and feeding the cats!
     </div>
 
-    <!-- Entering the body of the page, setting theme to dark -->
+    <!-- Entering the body of the page -->
 
-    <body class="bg-dark text-white">
+    <body class="bg-light" style="font-family: 'Chakra_Petch', cursive;">
         <br>
-        <h1 class="text-center lead display-4 fw-bold lh-1">Cat Feeder Control
+        <h1 class="text-center">Cat Feeder Central
         </h1>
-        <h3 class="text-center text-muted">To Make Whiskers loose weight!! (Chunky Cat)</h3>
-        <!-- Div for the two buttons -->
-        <div class="col-md-12">
-            <!-- Label displaying real time status of cat feeder -->
-            <p id="state" class="">Cat Feeder Status: %STATUS%</p>
-            <!-- Here are the two buttons, these buttons have a listeners assigned in the JavaScript code -->
-            <button id="button_Manual" type="button" class="btn btn-primary btn-block">%BUTTON%
-                </button>
-            <p class="text-center"></p>
-            <button id="button_Automatic" type="button" class="btn btn-success">Automatic
-                </button>
-        </div>
+        <h3 class=" text-center text-muted ">To Make Whiskers loose weight!! (Chunky Cat)</h3>
+        <div id="includedContent"></div>
+
+        <div w3-include-html="cat_swing.html"></div>
         <br>
-        <!-- testing a switch for automatic function-->
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
-            <label class="form-check-label" for="flexSwitchCheckDefault">Default
-                    switch checkbox input</label>
-        </div>
-        <!-- Testing a toast show from bootstrap to display messages-->
-        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto">Bootstrap</strong>
-                <small>11 mins ago</small>
-                <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close">
-                        <span aria-hidden="true"></span>
-                    </button>
+        <!-- Div for the two buttons -->
+        <div class="container ">
+            <div class="row ">
+                <!-- First Card displaying Automatic feeding options-->
+                <div class="col-3 ">
+                    <div class="card mb-3 ">
+                        <div class="card-header "><b>Automatic Controls</b></div>
+                        <div class="card-body ">
+                            <!-- testing a switch for automatic function-->
+                            <div class="form-check form-switch ">
+                                <input class="form-check-input " type="checkbox " role="switch " id="switch_AutomaticFeeding ">
+                                <label class="form-check-label " for="flexSwitchCheckDefault ">Scheduled Feeding
+                                    Enabled</label>
+                            </div>
+                            <br>
+                            <div class="form-group ">
+                                <label class="col-form-label mt-4 " for="inputDefault ">Seconds to feed</label>
+                                <input type="text " class="form-control " placeholder="Default input " id="inputDefault ">
+
+                                <label class="col-form-label mt-4 " for="inputDefault ">Hrs between feeding</label>
+                                <input type="text " class="form-control " placeholder="Default input " id="inputDefault ">
+                                <label class="col-form-label mt-4 " for="inputDefault ">Inactive Hours (feeding
+                                    off)</label>
+                                <label for="exampleSelect1" class="form-label mt-4">From:</label>
+                                <select class="form-select" id="exampleSelect1">
+                                    <option>5:00 PM</option>
+                                    <option>6:00 PM</option>
+                                    <option>7:00 PM</option>
+                                    <option>8:00 PM</option>
+                                    <option>9:00 PM</option>
+                                    <option>10:00 PM</option>
+                                    <option>11:00 PM</option>
+                                </select>
+                                <label for="exampleSelect1" class="form-label mt-4">To:</label>
+                                <select class="form-select" id="exampleSelect1">
+                                    <option>5:00 AM</option>
+                                    <option>6:00 AM</option>
+                                    <option>7:00 AM</option>
+                                    <option>8:00 AM</option>
+                                    <option>9:00 AM</option>
+                                    <option>10:00 AM</option>
+                                    <option>11:00 AM</option>
+                                </select>
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+                <!-- Second Card on the First Column displaying manual controls-->
+                <div class="col-3 ">
+                    <div class="card mb-3 ">
+                        <div class="card-header "><b>Manual Controls</b></div>
+                        <div class="card-body ">
+                            <!-- Label displaying real time status of cat feeder -->
+                            <!-- Here are the two buttons, these buttons have a listeners assigned in the JavaScript code -->
+                            <button id="button_Manual " type="button " class="btn btn-primary btn-block " style="font-family: 'Chakra_Petch', sans-serif;">%BUTTON%</button>
+                            <p class="text-center "></p>
+                            <button id="button_Automatic " type="button " class="btn btn-success " style="font-family: 'Chakra_Petch', sans-serif;">Automatic</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Third Card displaying current status-->
+                <div class="col-3 ">
+                    <div class="card mb-3 ">
+                        <div class="card-header "><b>Current Status</b></div>
+                        <div class="card-body ">
+                            <p id="state " class=" ">Cat Feeder Status: %STATUS%</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="toast-body">
+        </div>
+
+        <br>
+
+        <!-- Testing a toast show from bootstrap to display messages-->
+        <div class="toast show " role="alert " aria-live="assertive " aria-atomic="true ">
+            <div class="toast-header ">
+                <strong class="me-auto ">Bootstrap</strong>
+                <small>11 mins ago</small>
+                <button type="button " class="btn-close ms-2 mb-1 " data-bs-dismiss="toast " aria-label="Close ">
+                    <span aria-hidden="true "></span>
+                </button>
+            </div>
+            <div class="toast-body ">
                 Hello, world! This is a toast message.
             </div>
         </div>
 </div>
-<script type="text/javascript" src="Scripts.js"></script>
-<script type="text/javascript" src="jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+
+<div class="main">
+    <span class="stand"></span>
+    <div class="cat">
+        <div class="body"></div>
+        <div class="head">
+            <div class="ear"></div>
+            <div class="ear"></div>
+        </div>
+        <div class="face">
+            <div class="nose"></div>
+            <div class="whisker-container">
+                <div class="whisker"></div>
+                <div class="whisker"></div>
+            </div>
+            <div class="whisker-container">
+                <div class="whisker"></div>
+                <div class="whisker"></div>
+            </div>
+        </div>
+        <div class="tail-container">
+            <div class="tail">
+                <div class="tail">
+                    <div class="tail">
+                        <div class="tail">
+                            <div class="tail">
+                                <div class="tail">
+                                    <div class="tail"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    $(function() {
+        $("#includedContent").load("cat_swing.html");
+    });
+</script>
+<script type="text/javascript " src="Scripts.js "></script>
+<script type="text/javascript " src="jquery-3.6.0.min.js "></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js " integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p " crossorigin="anonymous "></script>
 </body>
 
 </html>

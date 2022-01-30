@@ -37,8 +37,10 @@ function onMessage(event) {
         document.getElementById('state').innerHTML = "Cat Feeder Status: " + state;
     } else if (event.data == "AutoON") {
         document.getElementById('button_Automatic').innerHTML = "TURN OFF AUTOMATIC";
+        document.getElementById('switch_AutomaticFeeding').checked = true;
     } else if (event.data == "AutoOFF") {
         document.getElementById('button_Automatic').innerHTML = "TURN ON AUTOMATIC";
+        document.getElementById('switch_AutomaticFeeding').checked = false;
     }
 
 }
@@ -50,12 +52,16 @@ function onLoad(event) {
     $(".alert").hide()
     initWebSocket();
     initButton();
+    $(function() {
+        $("#includedContent").load("cat_swing.html");
+    });
 }
 
-//Initializes the button by ID and adds the listener and directs them to the desired function
+//Add the listener to all the components and directs them to the desired function
 function initButton() {
     document.getElementById('button_Manual').addEventListener('click', feedCat);
     document.getElementById('button_Automatic').addEventListener('click', startAutomaticFeeding);
+    document.getElementById('switch_AutomaticFeeding').addEventListener('change', startAutomaticFeeding);
 }
 
 //Functions to send a message to the server.
