@@ -1,20 +1,34 @@
 #include <Arduino.h>
-#include <ESPTelnet.h>
 #include <analogWrite.h>
+#include <SPI.h>
 #include <WiFi.h>
+#include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <ESP32Servo.h>
+#include <MDNS_Generic.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "SPIFFS.h"
 #include "time.h"
+#include <ESPDateTime.h>
 #include "ESP32Time.h"
+#include <TimeLib.h>
+#include "time.h"
+#include "ESPTelnet.h"
 
-//Functions declarations
-void notifyClients(String message);
+WiFiUDP udp;
+MDNS mdns(udp);
+
+// Functions declarations
+void notifyClients();
+tm GetLastFeedingTime();
+void sendDebugMessage(String message);
 // Set web server port number to 80
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
+// Set Telnet server for remote debugging
+ESPTelnet telnet;
+IPAddress ip;
 
 // Current millis count
 unsigned long currentTime = millis();
@@ -24,7 +38,7 @@ unsigned long previousTime = 0;
 const long timeoutTime = 2000;
 // Variable for real time (time.h)
 const char *ntpServer = "time-a-b.nist.gov";
-const long gmtOffset_sec = -6;
+const long gmtOffset_sec = -6 * 3600;
 const int daylightOffset_sec = 3600;
 struct tm timeinfo;
 ESP32Time rtc;
@@ -35,7 +49,7 @@ int pos = 0; // variable to store the servo position
 
 int servoPin = 18;
 
-bool catFeederStatus = 0; //Variable to indicate if cat feeder is on or off
+bool catFeederStatus = 0; // Variable to indicate if cat feeder is on or off
 bool autoON = false;
 
 String ssid = "*****";
@@ -46,12 +60,12 @@ void ToggleAutomaticMode()
   if (autoON == false)
   {
     autoON = true;
-    notifyClients("AutoON");
+    ws.textAll("AutoON");
   }
   else
   {
     autoON = false;
-    notifyClients("AutoOFF");
+    ws.textAll("AutoOFF");
   }
 }
 //***************************************************************************************************
@@ -68,17 +82,17 @@ void ToggleCatFeeder()
     catFeederStatus = 0;
   }
   ws.textAll(String(catFeederStatus));
-  Serial.println(F("Cat Feeder Toggled: "));
-  Serial.println(catFeederStatus);
+  sendDebugMessage(F("Cat Feeder Toggled: "));
+  sendDebugMessage(String(catFeederStatus));
 }
 //***************************************************************************************************
 void FeedAutomatically()
 {
-  //print message to notify we are starting.
-  Serial.println(F("Starting Scheduled Feeding..."));
+  // print message to notify we are starting.
+  sendDebugMessage(F("Starting Scheduled Feeding..."));
   if (catFeederStatus == 1)
   {
-    Serial.println(F("Error: Feeder is busy... I see it is open."));
+    sendDebugMessage(F("Error: Feeder is busy... I see it is open."));
     return;
   }
 }
@@ -88,38 +102,62 @@ void LogFeedingTime()
   File fileFeedingLog = SPIFFS.open("/FeedingLog.ini", "w");
   if (!fileFeedingLog)
   {
-    Serial.println("Failed to open feeding log for writing to it");
+    sendDebugMessage("Failed to open feeding log for writing to it");
     return;
   }
-  if (fileFeedingLog.println(rtc.getDateTime()))
+
+  if (fileFeedingLog.println(String(rtc.getMonth() + 1) + char(32) + String(rtc.getDay()) + char(32) + String(rtc.getYear()) + char(32) + String(rtc.getHour()) + char(32) + String(rtc.getMinute())))
   {
-    Serial.println("Feeding date-time was logged");
+    sendDebugMessage("Feeding date-time was logged");
+    sendDebugMessage(rtc.getDateTime());
   }
   else
   {
-    Serial.println("Logging Feeding date-time FAILED");
+    sendDebugMessage("Logging Feeding date-time FAILED");
   }
   fileFeedingLog.close();
+  GetLastFeedingTime();
 }
 //***************************************************************************************************
-String GetLastFeedingTime()
+tm GetLastFeedingTime()
 {
   File fileFeedingLog = SPIFFS.open("/FeedingLog.ini", "r");
+  tm lastFeeding;
+  lastFeeding.tm_hour = 12;
+  lastFeeding.tm_min = 12;
+  lastFeeding.tm_sec = 12;
   if (!fileFeedingLog)
   {
     Serial.println("Failed to open feeding log to read it");
-    return "";
+    return lastFeeding;
   }
-  String lastFeeding;
-  lastFeeding = fileFeedingLog.readStringUntil(char(13));
+
+  lastFeeding.tm_mon = fileFeedingLog.readStringUntil(char(32)).toInt();
+  lastFeeding.tm_mday = fileFeedingLog.readStringUntil(char(32)).toInt();
+  lastFeeding.tm_year = fileFeedingLog.readStringUntil(char(32)).toInt();
+  lastFeeding.tm_hour = fileFeedingLog.readStringUntil(char(32)).toInt();
+  lastFeeding.tm_min = fileFeedingLog.readStringUntil(char(32)).toInt();
+
+  // lastFeeding = fileFeedingLog.readStringUntil(char(13));
   fileFeedingLog.close();
-  Serial.println(lastFeeding);
+  sendDebugMessage(String(lastFeeding.tm_mon) + char(47) + String(lastFeeding.tm_mday) + char(47) + String(lastFeeding.tm_year) + char(32) + String(lastFeeding.tm_hour) + char(58) + String(lastFeeding.tm_min));
+  // Stored like this: 2 6 2022 8 56
+
   return lastFeeding;
 }
 //***************************************************************************************************
-void notifyClients(String message)
+void notifyClients()
 {
-  ws.textAll(message);
+  ws.textAll(String(catFeederStatus));
+  ws.textAll("time: " + String(rtc.getDateTime()));
+  if (autoON == false)
+  {
+    ws.textAll("AutoOFF");
+  }
+  else
+  {
+    ws.textAll("AutoON");
+  }
 }
 //***************************************************************************************************
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
@@ -128,11 +166,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
   {
     data[len] = 0;
-    Serial.println(F("Message Received: "));
-    Serial.println((char *)data);
+    sendDebugMessage(F("Message Received: "));
+    sendDebugMessage((char *)data);
     if (strcmp((char *)data, "manual_toggle") == 0)
     {
-      //Toggle feeder position
+      // Toggle feeder position
       ToggleCatFeeder();
     }
     else if (strcmp((char *)data, "auto_toggle") == 0)
@@ -150,7 +188,9 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
   switch (type)
   {
   case WS_EVT_CONNECT:
+ 
     Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+    notifyClients();
     break;
   case WS_EVT_DISCONNECT:
     Serial.printf("WebSocket client #%u disconnected\n", client->id());
@@ -189,6 +229,10 @@ String processor(const String &var)
     else
       return "TURN OFF";
   }
+  else if (var == "TIME")
+  {
+    return rtc.getDateTime();
+  }
   return "";
 }
 //***************************************************************************************************
@@ -197,12 +241,61 @@ void printLocalTime()
 
   if (!getLocalTime(&timeinfo))
   {
-    Serial.println("Failed to obtain time");
+    sendDebugMessage("Failed to obtain time");
     return;
   }
   rtc.setTimeStruct(timeinfo);
-  Serial.println(rtc.getDateTime());
+  sendDebugMessage(rtc.getDateTime());
 }
+//***************************************************************************************************
+void onTelnetConnect(String ip)
+{
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" connected");
+  telnet.println("\nWelcome " + telnet.getIP());
+  telnet.println("(Use ^] + q  to disconnect.)");
+}
+//***************************************************************************************************
+void onTelnetConnectionAttempt(String ip)
+{
+  Serial.print("- Telnet: ");
+  Serial.print(ip);
+  Serial.println(" tried to connected");
+  //***************************************************************************************************
+}
+void setupTelnet()
+{
+  // passing on functions for various telnet events
+  telnet.onConnect(onTelnetConnect);
+  telnet.onConnectionAttempt(onTelnetConnectionAttempt);
+
+  // passing a lambda function
+  telnet.onInputReceived([](String str)
+                         {
+    // checks for a certain command
+    if (str == "ping") {
+      telnet.println("> pong");
+      Serial.println("- Telnet: pong");
+    } });
+
+  Serial.print("- Telnet: ");
+  if (telnet.begin())
+  {
+    Serial.println("running");
+  }
+  else
+  {
+    Serial.println("error.");
+  }
+}
+//***************************************************************************************************
+void sendDebugMessage(String message)
+{
+  Serial.println(message);
+  telnet.println(message);
+}
+
 //***************************************************************************************************
 void setup()
 {
@@ -215,7 +308,7 @@ void setup()
     return;
   }
 
-  //Reads the WIFI Password from the SPISS
+  // Reads the WIFI Password from the SPISS
   File file = SPIFFS.open("/System.ini");
   if (!file)
   {
@@ -232,18 +325,34 @@ void setup()
   }
 
   file.close();
+
   // Establish WiFi connections.
-  WiFi.mode(WIFI_STA);
+
+  WiFi.setHostname("Cat_Feeder_ESP32");
   Serial.println(ssid);
   WiFi.begin(ssid.c_str(), password.c_str());
-  while (WiFi.waitForConnectResult() != WL_CONNECTED)
+  delay(3000);
+  while (WiFi.status() != WL_CONNECTED)
   {
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
     ESP.restart();
   }
+  // Start Telnet
+  setupTelnet();
+  ip = WiFi.localIP();
 
-  //Arduino over the are sync code
+  // Starts mDNS service to recognize this device as catfeeder.local
+  String hostname = "catfeeder";
+
+  Serial.print("Registering mDNS hostname: ");
+  Serial.println(hostname);
+  Serial.print("To access, using ");
+  Serial.print(hostname);
+  Serial.println(".local");
+  mdns.begin(WiFi.localIP(), hostname.c_str());
+
+  // Arduino over the are sync code
   ArduinoOTA
       .onStart([]()
                {
@@ -254,8 +363,7 @@ void setup()
                    type = "filesystem";
 
                  // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-                 Serial.println("Start updating " + type);
-               })
+                 Serial.println("Start updating " + type); })
       .onEnd([]()
              { Serial.println("\nEnd"); })
       .onProgress([](unsigned int progress, unsigned int total)
@@ -272,8 +380,7 @@ void setup()
                  else if (error == OTA_RECEIVE_ERROR)
                    Serial.println("Receive Failed");
                  else if (error == OTA_END_ERROR)
-                   Serial.println("End Failed");
-               });
+                   Serial.println("End Failed"); });
 
   ArduinoOTA.begin();
 
@@ -286,7 +393,7 @@ void setup()
   myservo.attach(servoPin);   // attaches the servo on pin 18 to the servo object
   myservo.write(10);
 
-  //Start and configue the WebServer
+  // Start and configue the WebServer
 
   initWebSocket();
   // Web Server Root URL
@@ -303,9 +410,20 @@ void setup()
 
   server.begin();
   // Get the real time from the server
+  DateTime.setServer("time-a-b.nist.gov");
+  DateTime.setTimeZone("CST-6");
+  DateTime.begin(/* timeout param */);
+  if (!DateTime.isTimeValid())
+  {
+    Serial.println("Failed to get time from server.");
+  }
+
+  Serial.print(F("Time from ESP32TIMELIB: "));
+  Serial.println(DateTime.toString());
+
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
 
-  //Send our messages to the console stating we are ready to rock and roll!
+  // Send our messages to the console stating we are ready to rock and roll!
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -316,13 +434,24 @@ void setup()
 //***************************************************************************************************
 void loop()
 {
+
   ArduinoOTA.handle();
+  telnet.loop();
   ws.cleanupClients();
   if (autoON == true)
   {
     delay(1000);
     FeedAutomatically();
     GetLastFeedingTime();
+  }
+
+  String serialMessage;
+  while (Serial.available())
+  {
+    serialMessage = Serial.readString();
+    sendDebugMessage("command received, logging time");
+    LogFeedingTime();
+    delay(2000);
   }
 }
 

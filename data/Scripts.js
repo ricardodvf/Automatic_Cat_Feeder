@@ -5,7 +5,8 @@ var websocket;
 //Initiating the WebSocket and adding the handlers
 function initWebSocket() {
     console.log('Trying to open a WebSocket connection...');
-    websocket = new WebSocket(gateway);
+    //websocket = new WebSocket(gateway);
+    websocket = new WebSocket(`ws://10.0.0.44/ws`);
     websocket.onopen = onOpen;
     websocket.onclose = onClose;
     websocket.onmessage = onMessage;
@@ -29,18 +30,22 @@ function onMessage(event) {
     if (event.data == "1") {
         state = "ON";
         document.getElementById('button_Manual').innerHTML = "TURN OFF";
-        document.getElementById('state').innerHTML = "Cat Feeder Status: " + state;
+        document.getElementById('state').innerHTML = state;
         $('#alert_feederON').show();
+        $('#myToast').show();
     } else if (event.data == "0") {
         state = "OFF";
         document.getElementById('button_Manual').innerHTML = "TURN ON";
-        document.getElementById('state').innerHTML = "Cat Feeder Status: " + state;
+        document.getElementById('state').innerHTML = state;
     } else if (event.data == "AutoON") {
         document.getElementById('button_Automatic').innerHTML = "TURN OFF AUTOMATIC";
         document.getElementById('switch_AutomaticFeeding').checked = true;
     } else if (event.data == "AutoOFF") {
         document.getElementById('button_Automatic').innerHTML = "TURN ON AUTOMATIC";
         document.getElementById('switch_AutomaticFeeding').checked = false;
+    } else if (event.data.startsWith("time:")) {
+        let commandPosition = event.data.indexOf("time:") + 6;
+        document.getElementById('timeLabel').innerHTML = event.data.substring(commandPosition);
     }
 
 }
@@ -52,23 +57,36 @@ function onLoad(event) {
     $(".alert").hide()
     initWebSocket();
     initButton();
-    $(function() {
-        $("#includedContent").load("cat_swing.html");
-    });
 }
+
+
 
 //Add the listener to all the components and directs them to the desired function
 function initButton() {
-    document.getElementById('button_Manual').addEventListener('click', feedCat);
-    document.getElementById('button_Automatic').addEventListener('click', startAutomaticFeeding);
-    document.getElementById('switch_AutomaticFeeding').addEventListener('change', startAutomaticFeeding);
+    document.getElementById('button_Manual').addEventListener('click', button_Manual_Click);
+    document.getElementById('button_Automatic').addEventListener('click', button_Automatic_Feeding);
+    document.getElementById('switch_AutomaticFeeding').addEventListener('change', button_Automatic_Feeding);
+    document.getElementById('hrsBetweenFeeding').addEventListener('change', changes);
+    document.getElementById('secondsToFeed').addEventListener('change', changes);
+    document.getElementById('timeFrom').addEventListener('change', changes);
+    document.getElementById('timeTo').addEventListener('change', changes);
+
 }
 
 //Functions to send a message to the server.
-function feedCat() {
+function button_Manual_Click() {
     websocket.send('manual_toggle');
+    $('#myToast').show();
+    setTimeout(() => {
+        $('#myToast').hide();
+    }, 2000);
 }
 
-function startAutomaticFeeding() {
+function changes() {
+    websocket.send('secondsToFeed: ' + document.getElementById('secondsToFeed').value);
+}
+
+function button_Automatic_Feeding() {
     websocket.send('auto_toggle');
+    $('#myToast').hide();
 }
